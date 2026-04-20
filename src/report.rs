@@ -141,14 +141,15 @@ pub fn render_report(
     }}
     .workspace {{
       display: grid;
-      grid-template-columns: minmax(0, 2.6fr) minmax(280px, 1fr);
+      grid-template-columns: minmax(0, 2.6fr) minmax(0, 1fr);
       gap: 16px;
-      align-items: stretch;
+      align-items: start;
     }}
     .object-list {{
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
+      min-width: 0;
     }}
     .object-link {{
       border: 1px solid #cbd5e1;
@@ -158,6 +159,10 @@ pub fn render_report(
       padding: 7px 10px;
       font-size: 12px;
       cursor: pointer;
+      max-width: 100%;
+      max-inline-size: 100%;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }}
     .object-link.is-selected {{
       border-color: #f97316;
@@ -169,7 +174,6 @@ pub fn render_report(
       flex-direction: column;
       gap: 12px;
       min-width: 0;
-      height: 100%;
     }}
     .graph-panel.square {{
       aspect-ratio: 1 / 1;
@@ -210,9 +214,9 @@ pub fn render_report(
       display: flex;
       flex-direction: column;
       gap: 10px;
-      height: 100%;
       min-height: 0;
       min-width: 0;
+      overflow: hidden;
     }}
     .detail-shell.compact {{
       padding: 14px;
@@ -225,7 +229,6 @@ pub fn render_report(
       display: flex;
       flex-direction: column;
       gap: 10px;
-      flex: 1;
       min-height: 0;
       min-width: 0;
       overflow: auto;
@@ -293,6 +296,7 @@ pub fn render_report(
       margin: 0;
       padding: 0;
       list-style: none;
+      min-width: 0;
     }}
     .detail-list li {{
       background: #f8fafc;
@@ -300,6 +304,8 @@ pub fn render_report(
       border-radius: 999px;
       padding: 6px 9px;
       font-size: 11px;
+      max-inline-size: 100%;
+      overflow-wrap: anywhere;
     }}
     @media (max-width: 1100px) {{
       .workspace {{
@@ -351,6 +357,8 @@ pub fn render_report(
     const detailPanel = document.getElementById('detail-panel')
     const searchInput = document.getElementById('search-input')
     const graphRoot = document.getElementById('graph-root')
+    const graphPanel = document.querySelector('.graph-panel')
+    const detailShell = document.querySelector('.detail-shell')
 
     const defaultScale = 0.9
     let scale = defaultScale
@@ -393,6 +401,24 @@ pub fn render_report(
     function renderDetail(nodeId) {{
       detailPanel.innerHTML = details[nodeId] || details['root:local'] || '<div class="detail-card"><p>没有可展示的详情。</p></div>'
       applyObjectLinkFilters()
+      syncDetailHeight()
+    }}
+
+    function syncDetailHeight() {{
+      if (!graphPanel || !detailShell) return
+      if (window.innerWidth <= 1100) {{
+        detailShell.style.height = 'auto'
+        detailPanel.style.maxHeight = 'none'
+        return
+      }}
+      const graphHeight = graphPanel.getBoundingClientRect().height
+      const shellStyles = window.getComputedStyle(detailShell)
+      const panelOffset = detailPanel.offsetTop - detailShell.offsetTop
+      const shellPadding = parseFloat(shellStyles.paddingTop) + parseFloat(shellStyles.paddingBottom)
+      const available = Math.max(0, graphHeight - shellPadding - panelOffset)
+
+      detailShell.style.height = graphHeight + 'px'
+      detailPanel.style.maxHeight = available + 'px'
     }}
 
     function updateSelection(nodeId) {{
@@ -434,10 +460,12 @@ pub fn render_report(
       applyFilters()
       updateSelection('root:local')
     }})
+    window.addEventListener('resize', syncDetailHeight)
 
     setScale(defaultScale)
     applyFilters()
     updateSelection(selectedNodeId)
+    syncDetailHeight()
   </script>
 </body>
 </html>"##,
@@ -513,7 +541,7 @@ fn build_detail_map(
         .collect::<HashMap<_, _>>();
     let report_lookup = reports
         .iter()
-        .map(|report| (leaf_node_id(&report.probe.node), report))
+        .map(|report| (format!("leaf:{}", leaf_node_id(&report.probe.node)), report))
         .collect::<HashMap<_, _>>();
 
     details.insert(
@@ -856,15 +884,24 @@ mod tests {
         assert!(html.contains("graph-node"));
         assert!(html.contains("class=\"workspace\""));
         assert!(html.contains("class=\"panel detail-shell compact\""));
+        assert!(html.contains("display: grid;"));
+        assert!(html.contains("grid-template-columns: minmax(0, 2.6fr) minmax(0, 1fr);"));
+        assert!(html.contains("align-items: start;"));
         assert!(html.contains(".graph-panel.square"));
         assert!(html.contains("box-sizing: border-box;"));
         assert!(html.contains("aspect-ratio: 1 / 1;"));
-        assert!(html.contains("height: 100%;"));
+        assert!(html.contains("overflow: hidden;"));
         assert!(html.contains("table-layout: fixed;"));
         assert!(html.contains("overflow-wrap: anywhere;"));
+        assert!(html.contains("max-inline-size: 100%;"));
+        assert!(html.contains("white-space: normal;"));
+        assert!(html.contains("function syncDetailHeight()"));
+        assert!(html.contains("window.addEventListener('resize', syncDetailHeight)"));
         assert!(!html.contains("linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)"));
         assert!(!html.contains("<span class=\"label\">订阅地址</span>https://example.com/sub.txt"));
         assert!(!html.contains("地区分组"));
+        assert!(html.contains("\"leaf:leaf:US Node::vless@example.com:443\""));
+        assert!(!html.contains("没有找到该节点的详细路由信息"));
     }
 
     #[test]
