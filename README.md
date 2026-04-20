@@ -4,14 +4,14 @@ Generate an HTML route report for proxy subscription nodes.
 
 ## Quick Start
 
-### 1. Install Rust
+### 1. Download a release build
 
-Install the Rust toolchain from <https://rustup.rs/>.
+Download the latest macOS binary from the [GitHub Releases page](https://github.com/LanternCX/subtrace/releases) and extract it.
 
-### 2. Run from source
+### 2. Run the binary
 
 ```bash
-cargo run -- "https://example.com/subscription"
+./subroute "https://example.com/subscription"
 ```
 
 The command fetches the subscription, probes each parsed node, enriches route hops with AS information, and writes an HTML report in the current directory.
@@ -19,13 +19,13 @@ The command fetches the subscription, probes each parsed node, enriches route ho
 ### 3. Choose an output path
 
 ```bash
-cargo run -- "https://example.com/subscription" --output report.html
+./subroute "https://example.com/subscription" --output report.html
 ```
 
 ### 4. Control probing concurrency
 
 ```bash
-cargo run -- "https://example.com/subscription" --concurrency 8
+./subroute "https://example.com/subscription" --concurrency 8
 ```
 
 When `--concurrency` is omitted, all parsed nodes are probed concurrently.
@@ -33,14 +33,7 @@ When `--concurrency` is omitted, all parsed nodes are probed concurrently.
 ### 5. Control traceroute depth
 
 ```bash
-cargo run -- "https://example.com/subscription" --max-hops 20
-```
-
-### 6. Build a release binary
-
-```bash
-cargo build --release
-./target/release/subroute "https://example.com/subscription" --output report.html
+./subroute "https://example.com/subscription" --max-hops 20
 ```
 
 ## Notes
