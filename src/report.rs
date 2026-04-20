@@ -15,8 +15,7 @@ pub fn render_report(
     let topology = build_topology_view(reports);
     let summary_html = render_summary_cards(source_url, generated_at, reports, skipped);
     let region_filter_html = render_region_filter(&topology.nodes);
-    let region_group_html = render_region_groups(&topology.nodes);
-    let details = build_detail_map(source_url, generated_at, reports, skipped, &topology.nodes);
+    let details = build_detail_map(generated_at, reports, skipped, &topology.nodes);
     let details_json = serde_json::to_string(&details).expect("detail map should serialize");
 
     format!(
@@ -43,14 +42,15 @@ pub fn render_report(
       margin: 0 auto;
       padding: 24px;
       display: grid;
-      gap: 20px;
+      gap: 16px;
     }}
     .panel {{
       background: #ffffff;
       border: 1px solid #e2e8f0;
-      border-radius: 18px;
+      border-radius: 16px;
+      box-sizing: border-box;
       box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
-      padding: 18px 20px;
+      padding: 16px 18px;
     }}
     .summary-grid {{
       display: grid;
@@ -59,7 +59,7 @@ pub fn render_report(
       margin-bottom: 16px;
     }}
     .summary-wide {{
-      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+      background: #ffffff;
       border: 1px solid #e2e8f0;
       border-radius: 14px;
       padding: 14px 16px;
@@ -78,7 +78,7 @@ pub fn render_report(
       word-break: break-all;
     }}
     .summary-card {{
-      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+      background: #ffffff;
       border: 1px solid #e2e8f0;
       border-radius: 14px;
       padding: 14px 16px;
@@ -139,30 +139,11 @@ pub fn render_report(
       padding: 8px 12px;
       font-size: 13px;
     }}
-    .region-groups {{
+    .workspace {{
       display: grid;
-      gap: 10px;
-    }}
-    .region-groups details {{
-      border: 1px solid #e2e8f0;
-      border-radius: 14px;
-      padding: 10px 12px;
-      background: #f8fafc;
-    }}
-    .region-groups summary {{
-      cursor: pointer;
-      font-weight: 600;
-    }}
-    .object-columns {{
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 12px;
-      margin-top: 10px;
-    }}
-    .object-column h4 {{
-      margin: 0 0 8px;
-      font-size: 13px;
-      color: #475569;
+      grid-template-columns: minmax(0, 2.6fr) minmax(280px, 1fr);
+      gap: 16px;
+      align-items: stretch;
     }}
     .object-list {{
       display: flex;
@@ -184,8 +165,14 @@ pub fn render_report(
       background: #fff7ed;
     }}
     .graph-panel {{
-      display: grid;
-      gap: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 0;
+      height: 100%;
+    }}
+    .graph-panel.square {{
+      aspect-ratio: 1 / 1;
     }}
     .graph-header {{
       display: flex;
@@ -199,15 +186,18 @@ pub fn render_report(
       font-size: 18px;
     }}
     .graph-viewport {{
+      flex: 1;
       overflow: auto;
       border: 1px solid #e2e8f0;
       border-radius: 16px;
       background: #ffffff;
-      padding: 12px;
-      min-height: 520px;
+      padding: 8px;
+      min-height: 0;
     }}
     #graph-root {{
-      transform-origin: top center;
+      width: max-content;
+      min-width: 100%;
+      transform-origin: top left;
       transition: transform 0.15s ease;
     }}
     .graph-node.is-dimmed {{
@@ -216,34 +206,60 @@ pub fn render_report(
     .graph-edge.is-dimmed {{
       opacity: 0.08;
     }}
+    .detail-shell {{
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      height: 100%;
+      min-height: 0;
+      min-width: 0;
+    }}
+    .detail-shell.compact {{
+      padding: 14px;
+    }}
     .detail-shell h2 {{
-      margin: 0 0 12px;
-      font-size: 18px;
+      margin: 0;
+      font-size: 16px;
     }}
     #detail-panel {{
-      display: grid;
-      gap: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+      overflow: auto;
     }}
     .detail-card {{
       border: 1px solid #e2e8f0;
-      border-radius: 14px;
+      border-radius: 12px;
       background: #ffffff;
-      padding: 16px;
+      padding: 12px;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }}
+    .detail-card.primary {{
+      flex: 1;
     }}
     .detail-card h3 {{
-      margin: 0 0 10px;
-      font-size: 16px;
+      margin: 0 0 8px;
+      font-size: 15px;
+    }}
+    .detail-card h4 {{
+      margin: 10px 0 8px;
+      font-size: 13px;
+      color: #475569;
     }}
     .detail-meta {{
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 10px;
-      margin-bottom: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
     }}
     .detail-meta div {{
       background: #f8fafc;
       border-radius: 12px;
-      padding: 10px 12px;
+      padding: 8px 10px;
     }}
     .detail-meta .label {{
       display: block;
@@ -254,13 +270,16 @@ pub fn render_report(
     table {{
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 12px;
+      table-layout: fixed;
     }}
     th, td {{
       border-bottom: 1px solid #e2e8f0;
-      padding: 9px 10px;
+      padding: 8px 9px;
       text-align: left;
       vertical-align: top;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }}
     th {{
       color: #475569;
@@ -279,8 +298,16 @@ pub fn render_report(
       background: #f8fafc;
       border: 1px solid #e2e8f0;
       border-radius: 999px;
-      padding: 7px 10px;
-      font-size: 12px;
+      padding: 6px 9px;
+      font-size: 11px;
+    }}
+    @media (max-width: 1100px) {{
+      .workspace {{
+        grid-template-columns: 1fr;
+      }}
+      .graph-viewport {{
+        min-height: 460px;
+      }}
     }}
   </style>
 </head>
@@ -298,23 +325,20 @@ pub fn render_report(
       {region_filter_html}
     </section>
 
-    <section class="panel graph-panel">
-      <div class="graph-header">
-        <h2>路由关系图</h2>
-      </div>
-      <div class="graph-viewport" id="graph-viewport">
-        <div id="graph-root">{}</div>
-      </div>
-    </section>
+    <section class="workspace">
+      <section class="panel graph-panel square">
+        <div class="graph-header">
+          <h2>路由关系图</h2>
+        </div>
+        <div class="graph-viewport" id="graph-viewport">
+          <div id="graph-root">{}</div>
+        </div>
+      </section>
 
-    <section class="panel detail-shell">
-      <h2>详细信息</h2>
-      <div id="detail-panel"></div>
-    </section>
-
-    <section class="panel">
-      <h2>地区分组</h2>
-      {region_group_html}
+      <section class="panel detail-shell compact">
+        <h2>详细信息</h2>
+        <div id="detail-panel"></div>
+      </section>
     </section>
   </main>
 
@@ -328,7 +352,8 @@ pub fn render_report(
     const searchInput = document.getElementById('search-input')
     const graphRoot = document.getElementById('graph-root')
 
-    let scale = 1
+    const defaultScale = 0.9
+    let scale = defaultScale
     let selectedNodeId = 'root:local'
 
     function activeRegions() {{
@@ -344,6 +369,13 @@ pub fn render_report(
       return regionOk && searchOk
     }}
 
+    function applyObjectLinkFilters() {{
+      document.querySelectorAll('.object-link').forEach((link) => {{
+        const match = matchesFilter(link.dataset.region || '未知', link.dataset.label || '', link.dataset.kind || '')
+        link.hidden = !match
+      }})
+    }}
+
     function applyFilters() {{
       const visible = new Set()
       graphNodes.forEach((node) => {{
@@ -355,14 +387,12 @@ pub fn render_report(
         const show = visible.has(edge.dataset.source) && visible.has(edge.dataset.target)
         edge.classList.toggle('is-dimmed', !show)
       }})
-      document.querySelectorAll('.object-link').forEach((link) => {{
-        const match = matchesFilter(link.dataset.region || '未知', link.dataset.label || '', link.dataset.kind || '')
-        link.hidden = !match
-      }})
+      applyObjectLinkFilters()
     }}
 
     function renderDetail(nodeId) {{
       detailPanel.innerHTML = details[nodeId] || details['root:local'] || '<div class="detail-card"><p>没有可展示的详情。</p></div>'
+      applyObjectLinkFilters()
     }}
 
     function updateSelection(nodeId) {{
@@ -397,7 +427,7 @@ pub fn render_report(
     }}, {{ passive: false }})
     document.getElementById('zoom-in').addEventListener('click', () => setScale(scale + 0.12))
     document.getElementById('zoom-out').addEventListener('click', () => setScale(scale - 0.12))
-    document.getElementById('zoom-reset').addEventListener('click', () => setScale(1))
+    document.getElementById('zoom-reset').addEventListener('click', () => setScale(defaultScale))
     document.getElementById('filter-reset').addEventListener('click', () => {{
       regionToggles.forEach((toggle) => {{ toggle.checked = true }})
       searchInput.value = ''
@@ -405,6 +435,7 @@ pub fn render_report(
       updateSelection('root:local')
     }})
 
+    setScale(defaultScale)
     applyFilters()
     updateSelection(selectedNodeId)
   </script>
@@ -469,85 +500,7 @@ fn render_region_filter(nodes: &[TopologyNodeSummary]) -> String {
     )
 }
 
-fn render_region_groups(nodes: &[TopologyNodeSummary]) -> String {
-    let mut groups = BTreeMap::<String, RegionGroup>::new();
-
-    for node in nodes
-        .iter()
-        .filter(|node| node.kind == "as" || node.kind == "leaf")
-    {
-        let group = groups.entry(node.region.clone()).or_default();
-        let item = ObjectLink {
-            id: node.id.clone(),
-            label: if node.kind == "as" {
-                node.asn
-                    .as_ref()
-                    .map(|asn| format!("AS{asn}"))
-                    .unwrap_or_else(|| node.label.clone())
-            } else {
-                node.label.clone()
-            },
-            kind: node.kind.clone(),
-            region: node.region.clone(),
-        };
-        if node.kind == "as" {
-            group.as_nodes.push(item);
-        } else {
-            group.leaf_nodes.push(item);
-        }
-    }
-
-    let mut output = String::new();
-    output.push_str(r##"<div class="region-groups">"##);
-    for (region, mut group) in groups {
-        group
-            .as_nodes
-            .sort_by(|left, right| left.label.cmp(&right.label));
-        group
-            .leaf_nodes
-            .sort_by(|left, right| left.label.cmp(&right.label));
-
-        output.push_str(&format!(
-            r##"<details><summary>{}</summary><div class="object-columns">"##,
-            escape_html(&region)
-        ));
-        output.push_str(&render_object_column("AS", &group.as_nodes));
-        output.push_str(&render_object_column("机场节点", &group.leaf_nodes));
-        output.push_str("</div></details>");
-    }
-    output.push_str("</div>");
-    output
-}
-
-fn render_object_column(title: &str, items: &[ObjectLink]) -> String {
-    let content = if items.is_empty() {
-        "<span>无</span>".to_string()
-    } else {
-        items
-            .iter()
-            .map(|item| {
-                format!(
-                    r##"<button type="button" class="object-link" data-node-id="{}" data-kind="{}" data-region="{}" data-label="{}">{}</button>"##,
-                    escape_html(&item.id),
-                    escape_html(&item.kind),
-                    escape_html(&item.region),
-                    escape_html(&item.label),
-                    escape_html(&item.label)
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("")
-    };
-
-    format!(
-        r##"<div class="object-column"><h4>{}</h4><div class="object-list">{}</div></div>"##,
-        escape_html(title),
-        content
-    )
-}
-
 fn build_detail_map(
-    source_url: &str,
     generated_at: DateTime<Local>,
     reports: &[NodeReport],
     skipped: &[SkippedNode],
@@ -565,7 +518,7 @@ fn build_detail_map(
 
     details.insert(
         "root:local".to_string(),
-        render_root_detail(source_url, generated_at, reports, skipped),
+        render_root_detail(generated_at, reports, skipped),
     );
 
     for node in nodes {
@@ -587,14 +540,12 @@ fn build_detail_map(
 }
 
 fn render_root_detail(
-    source_url: &str,
     generated_at: DateTime<Local>,
     reports: &[NodeReport],
     skipped: &[SkippedNode],
 ) -> String {
     format!(
-        r##"<div class="detail-card"><h3>总览</h3><div class="detail-meta"><div><span class="label">订阅地址</span>{}</div><div><span class="label">生成时间</span>{}</div><div><span class="label">可测节点数</span>{}</div><div><span class="label">无法解析条目数</span>{}</div></div><p>点击上方关系图中的 AS、末端组节点或具体机场节点，可以在这里查看对应的详细信息。</p></div>"##,
-        escape_html(source_url),
+        r##"<div class="detail-card primary"><h3>总览</h3><div class="detail-meta"><div><span class="label">生成时间</span>{}</div><div><span class="label">可测节点数</span>{}</div><div><span class="label">无法解析条目数</span>{}</div></div><p>点击左侧关系图中的 AS 或末端组节点，可以在这里查看对应说明；进入组说明后，还可以继续点选具体机场节点。</p></div>"##,
         escape_html(&generated_at.format("%Y-%m-%d %H:%M:%S %z").to_string()),
         reports.len(),
         skipped.len(),
@@ -816,19 +767,6 @@ fn escape_html(value: &str) -> String {
         .replace('"', "&quot;")
 }
 
-#[derive(Default)]
-struct RegionGroup {
-    as_nodes: Vec<ObjectLink>,
-    leaf_nodes: Vec<ObjectLink>,
-}
-
-struct ObjectLink {
-    id: String,
-    label: String,
-    kind: String,
-    region: String,
-}
-
 struct RouteRow {
     ip: String,
     region: String,
@@ -916,6 +854,17 @@ mod tests {
         assert!(html.contains("Cloudflare"));
         assert!(html.contains("地区筛选"));
         assert!(html.contains("graph-node"));
+        assert!(html.contains("class=\"workspace\""));
+        assert!(html.contains("class=\"panel detail-shell compact\""));
+        assert!(html.contains(".graph-panel.square"));
+        assert!(html.contains("box-sizing: border-box;"));
+        assert!(html.contains("aspect-ratio: 1 / 1;"));
+        assert!(html.contains("height: 100%;"));
+        assert!(html.contains("table-layout: fixed;"));
+        assert!(html.contains("overflow-wrap: anywhere;"));
+        assert!(!html.contains("linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)"));
+        assert!(!html.contains("<span class=\"label\">订阅地址</span>https://example.com/sub.txt"));
+        assert!(!html.contains("地区分组"));
     }
 
     #[test]
