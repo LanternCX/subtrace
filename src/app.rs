@@ -21,8 +21,6 @@ use crate::report::{default_report_path, render_report};
 use crate::subscription::{decode_subscription_body, parse_subscription_text};
 use crate::traceroute::{collect_unique_ips, run_traceroute};
 
-const METADATA_CONCURRENCY_LIMIT: usize = 1;
-
 #[derive(Debug, Parser)]
 #[command(name = "subroute")]
 #[command(about = "从 Base64 订阅生成 macOS 节点去程路由 Markdown 报告")]
@@ -187,7 +185,7 @@ async fn fetch_annotations(reports: &[NodeProbeResult]) -> HashMap<IpAddr, IpAnn
 }
 
 fn resolve_metadata_concurrency(total: usize) -> usize {
-    total.clamp(1, METADATA_CONCURRENCY_LIMIT)
+    total.max(1)
 }
 
 fn resolve_concurrency(requested: usize, total: usize) -> usize {
@@ -219,12 +217,12 @@ mod tests {
 
     #[test]
     fn caps_metadata_concurrency_for_large_annotation_batches() {
-        assert_eq!(resolve_metadata_concurrency(199), 1);
+        assert_eq!(resolve_metadata_concurrency(199), 199);
     }
 
     #[test]
-    fn serializes_small_annotation_batches_for_stability() {
-        assert_eq!(resolve_metadata_concurrency(3), 1);
+    fn uses_all_annotation_work_by_default() {
+        assert_eq!(resolve_metadata_concurrency(3), 3);
     }
 
     #[test]
