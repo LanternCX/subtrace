@@ -2,6 +2,8 @@
 
 Generate an HTML route report for proxy subscription nodes.
 
+![header](./docs/img/header.png)
+
 ## Quick Start
 
 ### 1. Download a release build
