@@ -9,17 +9,25 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-13
-            target: x86_64-apple-darwin
-          - runner: macos-14
-            target: aarch64-apple-darwin
+  test:
+    runs-on: macos-14
 
-    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
+        run: cargo test --locked
+
+  build:
+    needs: test
+    runs-on: macos-14
 
     steps:
       - name: Check out repository
@@ -28,25 +36,25 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: aarch64-apple-darwin
 
       - name: Cache Rust build artifacts
         uses: Swatinem/rust-cache@v2
 
       - name: Build release binary
-        run: cargo build --release --locked --target "${{ matrix.target }}"
+        run: cargo build --release --locked --target aarch64-apple-darwin
 
       - name: Package release artifact
         run: |
           mkdir -p dist
-          cp "target/${{ matrix.target }}/release/subroute" dist/subroute
-          tar -C dist -czf "subroute-${{ github.ref_name }}-${{ matrix.target }}.tar.gz" subroute
+          cp "target/aarch64-apple-darwin/release/subroute" dist/subroute
+          tar -C dist -czf "subroute-${{ github.ref_name }}-aarch64-apple-darwin.tar.gz" subroute
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-${{ matrix.target }}
-          path: subroute-${{ github.ref_name }}-${{ matrix.target }}.tar.gz
+          name: release-aarch64-apple-darwin
+          path: subroute-${{ github.ref_name }}-aarch64-apple-darwin.tar.gz
 
   publish:
     runs-on: ubuntu-latest
